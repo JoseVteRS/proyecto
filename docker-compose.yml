@@ -1,0 +1,85 @@
+services:
+  # ----------------------
+  # BACKEND PHP + NGINX
+  # ----------------------
+  php:
+    image: php:8.2-fpm
+    container_name: php-fpm
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      - postgres
+    networks:
+      - devnet
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx-server
+    ports:
+      - "8080:80"
+    volumes:
+      - ./backend:/var/www/html:rw
+      - ./nginx:/etc/nginx/conf.d:rw
+    depends_on:
+      - php
+    networks:
+      - devnet
+
+  # ----------------------
+  # FRONTEND REACT + VITE
+  # ----------------------
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        USER_ID: ${UID}
+        GROUP_ID: ${GID}
+    container_name: frontend
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host"
+    networks:
+      - devnet
+
+  # ----------------------
+  # BASE DE DATOS
+  # ----------------------
+  postgres:
+    image: postgres:15
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - devnet
+
+  # ----------------------
+  # PGADMIN
+  # ----------------------
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8000:80"
+    depends_on:
+      - postgres
+    networks:
+      - devnet
+
+networks:
+  devnet:
+
+volumes:
+  postgres_data:
